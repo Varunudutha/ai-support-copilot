@@ -26,3 +26,7 @@ Thumbs.db
 # Local tooling
 .cache/
 coverage/
+
+# API test output and TypeScript build metadata
+api/coverage/
+**/*.tsbuildinfo

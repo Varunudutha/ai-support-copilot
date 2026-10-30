@@ -1,5 +1,7 @@
 import { useMemo, useState, type ChangeEvent as ReactChangeEvent, type MouseEvent as ReactMouseEvent } from 'react'
-import { useLocation, useNavigate as useRouterNavigate } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate as useRouterNavigate } from 'react-router-dom'
+import { useAuth, type WorkspaceMembership } from './auth/AuthContext'
+import { LoginPage, RegisterPage, WorkspaceOnboardingPage } from './components/auth/AuthPages'
 import {
   Activity,
   ArrowDownUp,
@@ -18,6 +20,7 @@ import {
   FileText,
   LayoutDashboard,
   LifeBuoy,
+  LogOut,
   Menu,
   MessageSquareText,
   MoreHorizontal,
@@ -77,11 +80,20 @@ const pageDescriptions: Record<string, string> = {
   Settings: 'Manage your workspace profile, preferences, and integrations.',
 }
 
-function Sidebar({ activePage, onNavigate, open, onClose }: {
+function Sidebar({ activePage, onNavigate, open, onClose, workspaceName, plan, fullName, email, initials, onLogout, memberships, activeWorkspaceId, onWorkspaceChange }: {
   activePage: string
   onNavigate: (page: string) => void
   open: boolean
   onClose: () => void
+  workspaceName: string
+  plan: string
+  fullName: string
+  email: string
+  initials: string
+  onLogout: () => void
+  memberships: WorkspaceMembership[]
+  activeWorkspaceId: string
+  onWorkspaceChange: (id: string) => void
 }) {
   const renderNav = (items: NavItem[]) => items.map((item) => {
     const Icon = item.icon
@@ -110,8 +122,12 @@ function Sidebar({ activePage, onNavigate, open, onClose }: {
 
         <div className="workspace-switcher">
           <span className="workspace-avatar"><Building2 size={17} /></span>
-          <span className="workspace-copy"><strong>Acme Studio</strong><small>Free workspace</small></span>
-          <ChevronDown size={16} className="workspace-chevron" />
+          <span className="workspace-copy"><strong>{workspaceName}</strong><small>{plan.charAt(0).toUpperCase() + plan.slice(1)} workspace</small></span>
+          {memberships.length > 1 ? (
+            <select className="workspace-select" aria-label="Switch workspace" value={activeWorkspaceId} onChange={(event) => onWorkspaceChange(event.target.value)}>
+              {memberships.map((membership) => <option key={membership.workspace.id} value={membership.workspace.id}>{membership.workspace.name}</option>)}
+            </select>
+          ) : <ChevronDown size={16} className="workspace-chevron" />}
         </div>
 
         <div className="sidebar-section-label">WORKSPACE</div>
@@ -122,16 +138,16 @@ function Sidebar({ activePage, onNavigate, open, onClose }: {
 
         <div className="sidebar-bottom">
           <div className="plan-card">
-            <div className="plan-card-heading"><span><Zap size={14} /> Free plan</span><span>72%</span></div>
+            <div className="plan-card-heading"><span><Zap size={14} /> {plan.charAt(0).toUpperCase() + plan.slice(1)} plan</span><span>72%</span></div>
             <div className="usage-track"><span /></div>
             <p>7,200 of 10,000 AI messages used</p>
             <button onClick={() => onNavigate('Settings')}>Explore plans <ArrowUpRight size={13} /></button>
           </div>
           <button className="help-link" onClick={() => onNavigate('Help center')}><LifeBuoy size={17} /> Help & support <ArrowUpRight size={13} /></button>
           <div className="sidebar-user">
-            <div className="user-avatar">OR</div>
-            <div className="user-copy"><strong>Olivia Rhye</strong><small>olivia@acme.studio</small></div>
-            <button className="icon-button user-menu-button" aria-label="Open account settings" onClick={() => onNavigate('Settings')}><MoreHorizontal size={18} /></button>
+            <div className="user-avatar">{initials}</div>
+            <div className="user-copy"><strong>{fullName}</strong><small>{email}</small></div>
+            <button className="icon-button user-menu-button" aria-label="Sign out" title="Sign out" onClick={onLogout}><LogOut size={16} /></button>
           </div>
         </div>
       </aside>
@@ -139,7 +155,7 @@ function Sidebar({ activePage, onNavigate, open, onClose }: {
   )
 }
 
-function Header({ search, setSearch, onMenu, onNotifications, notificationsOpen, onHelp, activePage }: {
+function Header({ search, setSearch, onMenu, onNotifications, notificationsOpen, onHelp, activePage, initials, fullName, email, onLogout }: {
   search: string
   setSearch: (value: string) => void
   onMenu: () => void
@@ -147,7 +163,13 @@ function Header({ search, setSearch, onMenu, onNotifications, notificationsOpen,
   notificationsOpen: boolean
   onHelp: () => void
   activePage: string
+  initials: string
+  fullName: string
+  email: string
+  onLogout: () => void
 }) {
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false)
+
   return (
     <header className="topbar">
       <div className="topbar-left">
@@ -174,7 +196,36 @@ function Header({ search, setSearch, onMenu, onNotifications, notificationsOpen,
             </div>
           )}
         </div>
-        <div className="topbar-avatar">OR</div>
+        <div className="account-menu-wrap">
+          <button
+            type="button"
+            className="topbar-avatar"
+            aria-label="Open account menu"
+            aria-haspopup="menu"
+            aria-expanded={accountMenuOpen}
+            onClick={() => setAccountMenuOpen((open) => !open)}
+          >
+            {initials}
+          </button>
+          {accountMenuOpen && (
+            <div className="account-menu" role="menu" aria-label="Account menu">
+              <div className="account-menu-identity">
+                <strong>{fullName}</strong>
+                <span>{email}</span>
+              </div>
+              <div className="account-menu-divider" />
+              <button
+                type="button"
+                className="account-menu-logout"
+                role="menuitem"
+                onClick={() => { setAccountMenuOpen(false); onLogout() }}
+              >
+                <LogOut size={16} />
+                Sign out
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   )
@@ -206,16 +257,16 @@ function TopicsPanel({ onViewAll }: { onViewAll: () => void }) {
   )
 }
 
-function TestAssistantModal({ onClose }: { onClose: () => void }) {
+function TestAssistantModal({ onClose, workspaceName }: { onClose: () => void; workspaceName: string }) {
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={(event: ReactMouseEvent<HTMLDivElement>) => { if (event.target === event.currentTarget) onClose() }}>
       <section className="preview-modal" role="dialog" aria-modal="true" aria-labelledby="preview-title">
-        <div className="preview-modal-header"><div className="preview-bot-icon"><Bot size={19} /></div><div><strong id="preview-title">Preview your assistant</strong><p>Acme Studio · Demo conversation</p></div><button className="icon-button" onClick={onClose} aria-label="Close preview"><X size={19} /></button></div>
+        <div className="preview-modal-header"><div className="preview-bot-icon"><Bot size={19} /></div><div><strong id="preview-title">Preview your assistant</strong><p>{workspaceName} · Demo conversation</p></div><button className="icon-button" onClick={onClose} aria-label="Close preview"><X size={19} /></button></div>
         <div className="preview-chat">
           <div className="preview-date">TODAY</div>
-          <div className="preview-message assistant-message"><span className="mini-bot"><Sparkles size={13} /></span><div><strong>Acme Assistant</strong><p>Hi there! 👋 I'm your Acme Studio assistant. How can I help you today?</p><small>Just now</small></div></div>
+          <div className="preview-message assistant-message"><span className="mini-bot"><Sparkles size={13} /></span><div><strong>{workspaceName} Assistant</strong><p>Hi there! 👋 I'm your {workspaceName} assistant. How can I help you today?</p><small>Just now</small></div></div>
           <div className="preview-message customer-message"><div><p>What are your customer support hours?</p><small>Just now</small></div><span className="mini-customer">OR</span></div>
-          <div className="preview-message assistant-message"><span className="mini-bot"><Sparkles size={13} /></span><div><strong>Acme Assistant</strong><p>I'd be happy to help! This is a visual preview. Once the knowledge base is connected, I'll answer using your business documents and include source references.</p><small>Just now</small></div></div>
+          <div className="preview-message assistant-message"><span className="mini-bot"><Sparkles size={13} /></span><div><strong>{workspaceName} Assistant</strong><p>I'd be happy to help! This is a visual preview. Once the knowledge base is connected, I'll answer using your business documents and include source references.</p><small>Just now</small></div></div>
         </div>
         <div className="preview-note"><Sparkles size={15} /> Preview uses sample content. Live AI responses will be enabled in the RAG milestone.</div>
         <div className="preview-input"><span>Write a message...</span><button disabled aria-label="Send preview message"><ArrowUpRight size={16} /></button></div>
@@ -224,12 +275,13 @@ function TestAssistantModal({ onClose }: { onClose: () => void }) {
   )
 }
 
-function Dashboard({ range, setRange, search, onViewAll, onViewAnalytics }: {
+function Dashboard({ range, setRange, search, onViewAll, onViewAnalytics, firstName }: {
   range: ChartRange
   setRange: (value: ChartRange) => void
   search: string
   onViewAll: () => void
   onViewAnalytics: () => void
+  firstName: string
 }) {
   const filteredConversations = useMemo(() => conversations.filter((conversation) => {
     const query = search.trim().toLowerCase()
@@ -239,7 +291,7 @@ function Dashboard({ range, setRange, search, onViewAll, onViewAnalytics }: {
   return (
     <>
       <div className="page-heading-row">
-        <div><div className="eyebrow page-eyebrow">FRIDAY, OCTOBER 30, 2026</div><h1>Good morning, Olivia <span>✦</span></h1><p>Here’s what’s happening with your support workspace today.</p></div>
+        <div><div className="eyebrow page-eyebrow">{new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).format(new Date()).toUpperCase()}</div><h1>Good morning, {firstName} <span>✦</span></h1><p>Here’s what’s happening with your support workspace today.</p></div>
         <div className="page-actions"><button className="button button-secondary" onClick={() => window.print()}><ArrowDownUp size={15} /> Export report</button><button className="button button-primary" onClick={onViewAll}><Plus size={16} /> View conversations</button></div>
       </div>
 
@@ -283,7 +335,8 @@ function ComingSoonPage({ title, onBack }: { title: string; onBack: () => void }
   )
 }
 
-export default function App() {
+function AppContent() {
+  const { user, memberships, activeWorkspace, loading, signOut, setActiveWorkspace } = useAuth()
   const routerNavigate = useRouterNavigate()
   const location = useLocation()
   const activePage = pathPages[location.pathname] ?? 'Help center'
@@ -293,6 +346,27 @@ export default function App() {
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
 
+  if (loading) {
+    return <div className="auth-loading"><span className="brand-mark"><Sparkles size={18} /></span><span>Preparing your workspace…</span></div>
+  }
+
+  if (location.pathname === '/login' || location.pathname === '/register') {
+    if (user) return <Navigate to={memberships.length ? '/' : '/onboarding'} replace />
+    return location.pathname === '/register' ? <RegisterPage /> : <LoginPage />
+  }
+
+  if (!user) return <Navigate to="/login" replace />
+  if (memberships.length === 0 && location.pathname !== '/onboarding') return <Navigate to="/onboarding" replace />
+  if (memberships.length > 0 && location.pathname === '/onboarding') return <Navigate to="/" replace />
+  if (location.pathname === '/onboarding') return <WorkspaceOnboardingPage />
+
+  const displayName = user.fullName.trim()
+  const firstName = displayName.split(/\s+/)[0] || 'there'
+  const initials = displayName.split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? '').join('') || 'U'
+  const workspaceName = activeWorkspace?.name ?? 'Workspace'
+  const workspacePlan = activeWorkspace?.plan ?? 'free'
+  const currentWorkspaceId = activeWorkspace?.id ?? ''
+
   const navigate = (page: string) => {
     routerNavigate(pagePaths[page] ?? '/help')
     setNotificationsOpen(false)
@@ -301,12 +375,12 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <Sidebar activePage={activePage} onNavigate={navigate} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar activePage={activePage} onNavigate={navigate} open={sidebarOpen} onClose={() => setSidebarOpen(false)} workspaceName={workspaceName} plan={workspacePlan} fullName={user.fullName} email={user.email} initials={initials} onLogout={() => { void signOut().then(() => routerNavigate('/login', { replace: true })) }} memberships={memberships} activeWorkspaceId={currentWorkspaceId} onWorkspaceChange={setActiveWorkspace} />
       <div className="main-shell">
-        <Header search={search} setSearch={setSearch} onMenu={() => setSidebarOpen(true)} onNotifications={() => setNotificationsOpen((value) => !value)} notificationsOpen={notificationsOpen} onHelp={() => navigate('Help center')} activePage={activePage} />
+        <Header search={search} setSearch={setSearch} onMenu={() => setSidebarOpen(true)} onNotifications={() => setNotificationsOpen((value) => !value)} notificationsOpen={notificationsOpen} onHelp={() => navigate('Help center')} activePage={activePage} initials={initials} fullName={user.fullName} email={user.email} onLogout={() => { void signOut().then(() => routerNavigate('/login', { replace: true })) }} />
         <main className="main-content" onClick={() => { if (notificationsOpen) setNotificationsOpen(false) }}>
           {activePage === 'Overview' ? (
-            <Dashboard range={range} setRange={setRange} search={search} onViewAll={() => navigate('Conversations')} onViewAnalytics={() => navigate('Analytics')} />
+            <Dashboard range={range} setRange={setRange} search={search} onViewAll={() => navigate('Conversations')} onViewAnalytics={() => navigate('Analytics')} firstName={firstName} />
           ) : (
             <ComingSoonPage title={activePage} onBack={() => navigate('Overview')} />
           )}
@@ -314,7 +388,12 @@ export default function App() {
         </main>
       </div>
       <button className="floating-test-button" onClick={() => setPreviewOpen(true)}><Sparkles size={16} /> Test assistant</button>
-      {previewOpen && <TestAssistantModal onClose={() => setPreviewOpen(false)} />}
+      {previewOpen && <TestAssistantModal onClose={() => setPreviewOpen(false)} workspaceName={workspaceName} />}
     </div>
   )
+}
+
+
+export default function App() {
+  return <AppContent />
 }

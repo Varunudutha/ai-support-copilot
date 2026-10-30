@@ -9,6 +9,8 @@ npm install
 npm run dev
 ```
 
+The Vite development server proxies `/api` to `http://localhost:4000`. Start the API in the `api` folder in a separate terminal.
+
 ## Checks
 
 ```bash
@@ -16,8 +18,14 @@ npm run typecheck
 npm run build
 ```
 
-## UI milestone notes
+## Authentication flow
 
-The initial workspace dashboard uses sample data to establish layout, components, and visual language. It includes responsive navigation, conversation search, time-range switching, a sample assistant preview, metrics, conversation activity, resolution distribution, recent conversations, topic breakdown, and a sample workspace health panel.
+- `/register` creates a user account.
+- `/login` signs in an existing user.
+- `/onboarding` creates the first workspace for a newly registered user.
+- The dashboard is protected and redirects unauthenticated users to sign in.
+- Access tokens are kept in application memory. Refresh tokens are sent only as HttpOnly cookies.
 
-No API or AI service is connected yet. The preview chat and analytics use clearly labelled sample content.
+## UI notes
+
+The workspace overview still uses sample analytics and conversations. Authentication and workspace identity are API-backed; product metrics will become live in later milestones.
