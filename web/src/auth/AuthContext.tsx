@@ -140,7 +140,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const apiRequest = useCallback(async <T,>(path: string, init: RequestInit = {}): Promise<T> => {
     const perform = (token: string | null) => {
       const headers = new Headers(init.headers)
-      if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
+      const isFormData = typeof FormData !== 'undefined' && init.body instanceof FormData
+      if (init.body && !headers.has('Content-Type') && !isFormData) headers.set('Content-Type', 'application/json')
       if (token) headers.set('Authorization', `Bearer ${token}`)
       if (activeWorkspaceId) headers.set('X-Workspace-Id', activeWorkspaceId)
       return fetch(`/api${path}`, { ...init, headers, credentials: 'include' })
