@@ -30,3 +30,6 @@ coverage/
 # API test output and TypeScript build metadata
 api/coverage/
 **/*.tsbuildinfo
+
+# Uploaded customer documents must never be committed
+api/storage/

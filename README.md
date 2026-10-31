@@ -17,14 +17,15 @@ ai-support-copilot/
 
 - **Milestone 01:** Frontend foundation and professional dashboard UI.
 - **Milestone 02:** Registration, login, session management, workspace onboarding, roles, and workspace authorization.
-- **Next:** Knowledge base upload and processing, then RAG chat and controlled tools.
+- **Milestone 03 (API foundation):** Workspace-scoped PDF, DOCX and TXT uploads, file validation, document listing and deletion.
+- **Remaining in Milestone 03:** Document text extraction, chunking, background processing and the Knowledge Base UI.
 
 ## Technology
 
 | Area | Stack |
 | --- | --- |
 | Frontend | React 19, TypeScript, Vite, Tailwind CSS 4, React Router, Lucide |
-| API | Node.js, Express, TypeScript, Zod |
+| API | Node.js, Express, TypeScript, Zod, Multer |
 | Database | MongoDB + Mongoose |
 | Authentication | bcrypt password hashing, short-lived JWT access tokens, rotating HttpOnly refresh cookies |
 | Local database | Docker Compose / MongoDB Atlas |

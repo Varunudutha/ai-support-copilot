@@ -39,6 +39,7 @@ import { ConversationTable } from './components/dashboard/ConversationTable'
 import { MetricCard } from './components/dashboard/MetricCard'
 import { AgentHealthPanel, ResolutionPanel } from './components/dashboard/ResolutionPanel'
 import { conversations, type ChartRange } from './data/dashboard'
+import { KnowledgeBasePage } from './components/knowledge/KnowledgeBasePage'
 
 type NavItem = { label: string; icon: typeof LayoutDashboard; badge?: string }
 
@@ -381,6 +382,8 @@ function AppContent() {
         <main className="main-content" onClick={() => { if (notificationsOpen) setNotificationsOpen(false) }}>
           {activePage === 'Overview' ? (
             <Dashboard range={range} setRange={setRange} search={search} onViewAll={() => navigate('Conversations')} onViewAnalytics={() => navigate('Analytics')} firstName={firstName} />
+          ) : activePage === 'Knowledge base' ? (
+            <KnowledgeBasePage />
           ) : (
             <ComingSoonPage title={activePage} onBack={() => navigate('Overview')} />
           )}

@@ -54,6 +54,20 @@ A user can belong to multiple workspaces through `Membership` records. Workspace
 
 Roles: `owner`, `admin`, `agent`, `viewer`. Only owners and admins can update workspace settings in this milestone.
 
+## Knowledge Base API (Milestone 03 foundation)
+
+All endpoints require a Bearer access token and an active workspace membership. The `:workspaceId` route parameter and `X-Workspace-Id` header must match.
+
+| Method | Route | Allowed roles |
+| --- | --- | --- |
+| POST | `/api/workspaces/:workspaceId/knowledge-documents` | owner, admin, agent |
+| GET | `/api/workspaces/:workspaceId/knowledge-documents?page=1&limit=20` | any active member |
+| DELETE | `/api/workspaces/:workspaceId/knowledge-documents/:documentId` | owner, admin |
+
+Upload with `multipart/form-data`, using the field name `file`. Supported formats are PDF, DOCX and UTF-8 TXT, up to 10 MB each. Files are stored privately under `api/storage/knowledge` with generated names; that folder is excluded from Git.
+
+This stage does not yet extract text, split chunks, create embeddings, or index vectors. Those are later Milestone 03 tasks. Local disk storage is for development only.
+
 ## Cookie deployment note
 
 Local development uses `COOKIE_SECURE=false` and `COOKIE_SAME_SITE=lax`. When the frontend and API are deployed on different sites, configure HTTPS, `COOKIE_SECURE=true`, `COOKIE_SAME_SITE=none`, and an exact `FRONTEND_ORIGIN`. Prefer routing `/api` through the same site when possible. Do not use wildcard credentialed CORS origins.

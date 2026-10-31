@@ -1,0 +1,22 @@
+AI SUPPORT COPILOT — MILESTONE 03 KNOWLEDGE BASE UI PATCH
+
+1. Extract this ZIP into your existing ai-support-copilot project root.
+   Merge folders and keep/replace files when prompted.
+2. Open PowerShell or the VS Code terminal at the project root (the folder containing web and api).
+3. Run:
+
+   powershell -ExecutionPolicy Bypass -File .\APPLY_MILESTONE_03_UI.ps1
+
+4. Verify the frontend:
+
+   cd web
+   npm run typecheck
+   npm run build
+
+5. Start the API and frontend in separate terminals, sign in, and open Knowledge base from the sidebar.
+
+The patch adds the Knowledge Base screen, document listing/search, upload, role-aware delete controls,
+workspace-aware API calls, and multipart FormData support. The API still stores documents with status
+"uploaded"; text extraction/indexing is a later processing step.
+
+Do not commit or push until the local checks and manual upload test have passed.
