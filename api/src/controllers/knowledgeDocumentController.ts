@@ -9,6 +9,7 @@ import { asyncHandler } from '../utils/asyncHandler.js'
 import { AppError } from '../utils/appError.js'
 import { resolveKnowledgeDocumentPath } from '../utils/knowledgeStorage.js'
 import { extractDocumentText, splitTextIntoChunks } from '../services/documentExtractionService.js'
+import { EMBEDDING_DIMENSIONS, generateEmbeddings } from '../services/embeddingService.js'
 
 const listQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
@@ -142,6 +143,8 @@ export const processKnowledgeDocument = asyncHandler(async (request: Request, re
       throw new AppError('Document produced too many chunks to process safely.', 413, 'TOO_MANY_DOCUMENT_CHUNKS')
     }
 
+    const embeddings = await generateEmbeddings(chunks)
+
     await KnowledgeChunk.deleteMany({
       workspaceId: document.workspaceId,
       documentId: document._id,
@@ -155,6 +158,7 @@ export const processKnowledgeDocument = asyncHandler(async (request: Request, re
       sourceName: document.originalName,
       mimeType: document.mimeType,
       pageCount: extracted.pageCount,
+      embedding: embeddings[chunkIndex],
     })))
 
     document.status = 'ready'
@@ -171,6 +175,8 @@ export const processKnowledgeDocument = asyncHandler(async (request: Request, re
       processing: {
         extractedCharacters: extracted.text.length,
         chunksCreated: chunks.length,
+        embeddingsCreated: embeddings.length,
+        embeddingDimensions: EMBEDDING_DIMENSIONS,
         pageCount: extracted.pageCount,
       },
     })

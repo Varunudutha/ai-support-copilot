@@ -14,6 +14,8 @@ const envSchema = z.object({
   COOKIE_SECURE: z.enum(['true', 'false']).default('false').transform((value) => value === 'true'),
   COOKIE_SAME_SITE: z.enum(['lax', 'strict', 'none']).default('lax'),
   COOKIE_DOMAIN: z.string().optional(),
+  AI_SERVICE_URL: z.string().url().default('http://127.0.0.1:8000'),
+  AI_SERVICE_TIMEOUT_MS: z.coerce.number().int().min(1000).max(300000).default(120000),
 })
 
 const parsed = envSchema.safeParse(process.env)

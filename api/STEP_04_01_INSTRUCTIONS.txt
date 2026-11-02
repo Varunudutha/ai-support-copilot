@@ -1,0 +1,24 @@
+STEP 04.1 - NODE.JS EMBEDDING CLIENT
+
+Files included:
+- api/src/config/env.ts
+- api/.env.example
+- api/src/services/embeddingService.ts
+- api/src/controllers/knowledgeDocumentController.ts
+- api/tests/embeddingService.test.ts
+
+What changed:
+1. Node.js calls the local FastAPI /embeddings endpoint.
+2. Requests are batched in groups of 32 to match the Python API limit.
+3. Responses are validated for count, dimension, and finite numeric values.
+4. Each chunk is saved with its corresponding 384-dimensional embedding.
+5. Document processing returns embeddingsCreated and embeddingDimensions.
+6. The Node.js client returns a clear 503 error if the AI service is unavailable.
+
+Configuration:
+AI_SERVICE_URL=http://127.0.0.1:8000
+AI_SERVICE_TIMEOUT_MS=120000
+
+Keep your existing api/.env file. The new variables have defaults, so you do not need to replace your local secrets or database settings.
+
+The Python AI service must be running while you process documents.
