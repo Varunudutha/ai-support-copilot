@@ -3,7 +3,7 @@ from fastapi import FastAPI
 app = FastAPI(
     title="AI Support Copilot - AI Service",
     description="Local AI services for document embeddings and retrieval.",
-    version="0.1.0",
+    version="0.2.0",
 )
 
 
@@ -12,7 +12,7 @@ async def health_check() -> dict[str, str]:
     return {
         "status": "ok",
         "service": "ai-support-copilot-ai",
-        "stage": "step-03-01",
+        "stage": "step-03-02",
     }
 
 
