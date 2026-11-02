@@ -2,6 +2,7 @@ import { Router } from 'express'
 import {
   deleteKnowledgeDocument,
   listKnowledgeDocuments,
+  processKnowledgeDocument,
   uploadKnowledgeDocument as createKnowledgeDocument,
 } from '../controllers/knowledgeDocumentController.js'
 import { requireAuth } from '../middleware/requireAuth.js'
@@ -22,6 +23,11 @@ router.post(
   parseKnowledgeUpload,
   validateKnowledgeFile,
   createKnowledgeDocument,
+)
+router.post(
+  '/:documentId/process',
+  requireWorkspaceRoles('owner', 'admin', 'agent'),
+  processKnowledgeDocument,
 )
 router.delete(
   '/:documentId',
