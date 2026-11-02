@@ -11,7 +11,7 @@ def test_health_endpoint_returns_ok() -> None:
     assert response.json() == {
         "status": "ok",
         "service": "ai-support-copilot-ai",
-        "stage": "step-03-01",
+        "stage": "step-03-03",
     }
 
 

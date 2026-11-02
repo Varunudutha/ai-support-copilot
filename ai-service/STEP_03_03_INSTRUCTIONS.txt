@@ -1,0 +1,20 @@
+﻿MILESTONE 04 - STEP 03.3
+
+1. Extract this ZIP into your repository root.
+2. Merge ai-service and replace app/main.py when prompted.
+3. Keep your existing .venv folder.
+4. Run from PowerShell:
+
+   cd ai-service
+   .\.venv\Scripts\Activate.ps1
+   python -m pytest -q
+
+5. Start the service:
+
+   uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+
+6. Test POST /embeddings using the example in the chat instructions.
+7. Stop the server with Ctrl+C.
+8. From repository root, stage only ai-service and commit.
+
+The first real model request downloads the model if it is not cached.
