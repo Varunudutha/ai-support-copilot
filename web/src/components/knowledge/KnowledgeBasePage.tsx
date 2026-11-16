@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent, type FormEvent } from 'react'
 import {
   AlertCircle,
   BookOpen,
@@ -10,13 +10,16 @@ import {
   LoaderCircle,
   RefreshCw,
   Search,
+  Send,
   ShieldCheck,
+  Sparkles,
   Trash2,
   Upload,
   X,
 } from 'lucide-react'
 import { useAuth } from '../../auth/AuthContext'
 import '../../knowledge-base.css'
+import '../../knowledge-base-rag.css'
 
 type KnowledgeDocument = {
   id: string
@@ -31,6 +34,26 @@ type KnowledgeDocument = {
 type KnowledgeListResponse = {
   documents: KnowledgeDocument[]
   pagination?: { page: number; limit: number; total: number; pages: number }
+}
+
+type RagCitation = {
+  citationId: string
+  id: string
+  documentId: string
+  chunkIndex: number
+  sourceName: string
+  mimeType: string
+  pageCount: number | null
+  score: number
+  excerpt: string
+}
+
+type RagAnswerResponse = {
+  question: string
+  answer: string
+  grounded: boolean
+  model: string
+  citations: RagCitation[]
 }
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024
@@ -75,6 +98,37 @@ export function KnowledgeBasePage() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
 
+  const [question, setQuestion] = useState('')
+  const [asking, setAsking] = useState(false)
+  const [ragError, setRagError] = useState('')
+  const [ragResult, setRagResult] = useState<RagAnswerResponse | null>(null)
+
+  const askKnowledgeBase = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    const trimmedQuestion = question.trim()
+    if (trimmedQuestion.length < 3 || asking || !workspaceId) return
+
+    setAsking(true)
+    setRagError('')
+    setRagResult(null)
+
+    try {
+      const result = await apiRequest<RagAnswerResponse>(
+        `/workspaces/${workspaceId}/knowledge-documents/answer`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ question: trimmedQuestion, limit: 5 }),
+        },
+      )
+      setRagResult(result)
+    } catch (cause) {
+      setRagError(cause instanceof Error ? cause.message : 'Unable to generate an answer. Please try again.')
+    } finally {
+      setAsking(false)
+    }
+  }
+
   const canUpload = ['owner', 'admin', 'agent'].includes(activeWorkspaceRole ?? '')
   const canDelete = ['owner', 'admin'].includes(activeWorkspaceRole ?? '')
 
@@ -101,6 +155,12 @@ export function KnowledgeBasePage() {
   useEffect(() => {
     void loadDocuments()
   }, [loadDocuments])
+
+  useEffect(() => {
+    setQuestion('')
+    setRagError('')
+    setRagResult(null)
+  }, [workspaceId])
 
   const filteredDocuments = useMemo(() => {
     const query = search.trim().toLowerCase()
@@ -184,7 +244,7 @@ export function KnowledgeBasePage() {
   }
 
   return (
-    <section className="kb-page" aria-busy={loading || uploading}>
+    <section className="kb-page" aria-busy={loading || uploading || asking}>
       <div className="kb-heading-row">
         <div>
           <div className="eyebrow page-eyebrow">CONTENT & SOURCES</div>
@@ -247,6 +307,82 @@ export function KnowledgeBasePage() {
         <div className="kb-readonly-note"><ShieldCheck size={16} /> Your workspace role allows you to view documents but not upload or delete them.</div>
       )}
 
+      <section className="kb-ai-panel" aria-labelledby="kb-ai-title" aria-busy={asking}>
+        <div className="kb-ai-heading">
+          <span className="kb-ai-heading-icon"><Sparkles size={18} /></span>
+          <div className="kb-ai-heading-copy">
+            <h2 id="kb-ai-title">Ask your knowledge base</h2>
+            <p>Get answers from your workspace documents, with source excerpts you can verify.</p>
+          </div>
+          <span className="kb-ai-heading-tag">RAG assistant</span>
+        </div>
+
+        <form className="kb-ai-form" onSubmit={askKnowledgeBase}>
+          <label htmlFor="kb-ai-question">Your question</label>
+          <textarea
+            id="kb-ai-question"
+            value={question}
+            onChange={(event) => setQuestion(event.target.value)}
+            placeholder="For example: What is the return policy for an order?"
+            rows={3}
+            minLength={3}
+            maxLength={2000}
+            required
+            disabled={asking || !workspaceId}
+          />
+          <div className="kb-ai-form-footer">
+            <span>Answers are based on retrieved workspace sources. Unavailable information will be identified.</span>
+            <button className="button button-primary kb-ai-submit" type="submit" disabled={asking || question.trim().length < 3 || !workspaceId}>
+              {asking ? <LoaderCircle size={15} className="kb-spin" /> : <Send size={15} />}
+              {asking ? 'Thinking…' : 'Ask question'}
+            </button>
+          </div>
+        </form>
+
+        {ragError && (
+          <div className="kb-ai-error" role="alert">
+            <AlertCircle size={16} />
+            <span>{ragError}</span>
+          </div>
+        )}
+
+        {ragResult && (
+          <div className={`kb-ai-result ${ragResult.grounded ? 'kb-ai-result-grounded' : 'kb-ai-result-ungrounded'}`} aria-live="polite">
+            <div className="kb-ai-result-header">
+              <div className="kb-ai-result-status">
+                {ragResult.grounded ? <CheckCircle2 size={17} /> : <AlertCircle size={17} />}
+                <strong>{ragResult.grounded ? 'Grounded answer' : 'Not found in your knowledge base'}</strong>
+              </div>
+              <span className="kb-ai-model">{ragResult.model}</span>
+            </div>
+            <div className="kb-ai-asked-question">{ragResult.question}</div>
+            <p className="kb-ai-answer-text">{ragResult.answer}</p>
+
+            {ragResult.grounded && ragResult.citations.length > 0 && (
+              <div className="kb-ai-sources">
+                <h3>Sources <span>{ragResult.citations.length}</span></h3>
+                <div className="kb-ai-source-list">
+                  {ragResult.citations.map((citation) => (
+                    <details className="kb-ai-source" key={citation.id}>
+                      <summary>
+                        <span className="kb-ai-citation-id">{citation.citationId}</span>
+                        <strong title={citation.sourceName}>{citation.sourceName}</strong>
+                        <span className="kb-ai-source-toggle">View excerpt</span>
+                      </summary>
+                      <p>{citation.excerpt}</p>
+                    </details>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {!ragResult.grounded && (
+              <p className="kb-ai-no-source-note">Try asking a different question or upload and process a document that contains this information.</p>
+            )}
+          </div>
+        )}
+      </section>
+
       <section className="kb-documents-panel">
         <div className="kb-documents-heading">
           <div><h2>Uploaded documents</h2><p>Files added to your workspace knowledge base.</p></div>
@@ -285,7 +421,7 @@ export function KnowledgeBasePage() {
           </div>
         )}
       </section>
-      <div className="kb-processing-footnote"><FileText size={14} /> Uploaded files are stored securely. Document text extraction and AI indexing will be activated in the next processing step.</div>
+      <div className="kb-processing-footnote"><FileText size={14} /> Uploaded files are stored securely. Processed documents are indexed for retrieval, and grounded answers include verifiable source excerpts when available.</div>
     </section>
   )
 }
