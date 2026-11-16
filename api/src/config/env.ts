@@ -16,6 +16,10 @@ const envSchema = z.object({
   COOKIE_DOMAIN: z.string().optional(),
   AI_SERVICE_URL: z.string().url().default('http://127.0.0.1:8000'),
   AI_SERVICE_TIMEOUT_MS: z.coerce.number().int().min(1000).max(300000).default(120000),
+  OLLAMA_BASE_URL: z.string().url().default('http://127.0.0.1:11434'),
+  OLLAMA_MODEL: z.string().trim().min(1).default('qwen2.5:1.5b-instruct'),
+  OLLAMA_TIMEOUT_MS: z.coerce.number().int().min(1000).max(300000).default(180000),
+  OLLAMA_KEEP_ALIVE: z.string().trim().min(1).default('5m'),
 })
 
 const parsed = envSchema.safeParse(process.env)

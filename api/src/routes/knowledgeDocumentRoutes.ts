@@ -10,6 +10,7 @@ import { requireWorkspaceAccess, requireWorkspaceRoles } from '../middleware/wor
 import { uploadKnowledgeDocument as parseKnowledgeUpload } from '../middleware/uploadKnowledgeDocument.js'
 import { validateKnowledgeFile } from '../middleware/validateKnowledgeFile.js'
 import { searchKnowledgeDocuments } from '../controllers/knowledgeSearchController.js'
+import { answerKnowledgeQuestion } from '../controllers/ragController.js'
 
 // The parent route contains :workspaceId, so mergeParams is required for the
 // workspace authorization middleware to see and verify that identifier.
@@ -19,6 +20,7 @@ router.use(requireAuth, requireWorkspaceAccess)
 
 router.get('/', listKnowledgeDocuments)
 router.post('/search', searchKnowledgeDocuments)
+router.post('/answer', answerKnowledgeQuestion)
 router.post(
   '/',
   requireWorkspaceRoles('owner', 'admin', 'agent'),
