@@ -94,6 +94,7 @@ interface SendMessageResponse {
   message: string
   conversation: Conversation
   savedMessage: Message
+  aiMessage?: Message
 }
 
 const STATUS_LABELS: Record<ConversationStatus, string> = {
@@ -360,7 +361,7 @@ export function ConversationsPage() {
     setComposerContent('')
 
     try {
-      await apiRequest<SendMessageResponse>(
+      const response = await apiRequest<SendMessageResponse>(
         `/workspaces/${workspaceId}/conversations/${selectedConversation._id}/messages`,
         {
           method: 'POST',
@@ -368,12 +369,13 @@ export function ConversationsPage() {
         },
       )
 
-      // Reload messages for this conversation
-      const response = await apiRequest<GetConversationResponse>(
-        `/workspaces/${workspaceId}/conversations/${selectedConversation._id}?limit=100`,
-      )
-
-      setMessages(response.messages ?? [])
+      // Add customer message and AI response (if any) to local state immediately
+      if (response.savedMessage) {
+        setMessages((prev) => [...prev, response.savedMessage])
+      }
+      if (response.aiMessage) {
+        setMessages((prev) => [...prev, response.aiMessage!])
+      }
 
       // Update conversation in list (last message time, count)
       await loadConversations()
