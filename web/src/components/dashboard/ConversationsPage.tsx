@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type
 import {
   AlertCircle,
   ArrowRight,
+  ArrowUpRight,
   Bot,
   ChevronDown,
   ChevronLeft,
@@ -76,6 +77,15 @@ interface ListConversationsResponse {
 
 interface GetConversationResponse {
   conversation: Conversation
+  messages: Message[]
+  pagination: {
+    limit: number
+    total: number
+    hasMore: boolean
+  }
+}
+
+interface LoadMoreMessagesResponse {
   messages: Message[]
   pagination: {
     limit: number
@@ -189,7 +199,10 @@ export function ConversationsPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [loadingMessages, setLoadingMessages] = useState(false)
   const [messagesError, setMessagesError] = useState('')
-    const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [messagesHasMore, setMessagesHasMore] = useState(false)
+  const [loadingMoreMessages, setLoadingMoreMessages] = useState(false)
+  const [earliestMessageId, setEarliestMessageId] = useState<string | null>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // New conversation modal state
   const [showNewConversationModal, setShowNewConversationModal] = useState(false)
@@ -258,13 +271,42 @@ export function ConversationsPage() {
       )
 
       setMessages(response.messages ?? [])
+      setMessagesHasMore(response.pagination.hasMore ?? false)
+      // Track the earliest message ID for "load more" pagination
+      setEarliestMessageId(response.messages.length > 0 ? response.messages[0]._id : null)
     } catch (cause) {
       setMessagesError(cause instanceof Error ? cause.message : 'Unable to load messages.')
       setMessages([])
+      setMessagesHasMore(false)
+      setEarliestMessageId(null)
     } finally {
       setLoadingMessages(false)
     }
   }, [apiRequest, workspaceId])
+
+  // Load more messages (pagination for long conversations)
+  const loadMoreMessages = useCallback(async () => {
+    if (!workspaceId || !selectedConversation || !earliestMessageId || loadingMoreMessages || !messagesHasMore) return
+
+    setLoadingMoreMessages(true)
+
+    try {
+      const response = await apiRequest<LoadMoreMessagesResponse>(
+        `/workspaces/${workspaceId}/conversations/${selectedConversation._id}/messages?before=${earliestMessageId}&limit=50`,
+      )
+
+      // Prepend older messages to the existing list
+      setMessages((prev) => [...response.messages, ...prev])
+      setMessagesHasMore(response.pagination.hasMore ?? false)
+      if (response.messages.length > 0) {
+        setEarliestMessageId(response.messages[0]._id)
+      }
+    } catch (cause) {
+      console.error('Failed to load more messages:', cause)
+    } finally {
+      setLoadingMoreMessages(false)
+    }
+  }, [apiRequest, workspaceId, selectedConversation, earliestMessageId, loadingMoreMessages, messagesHasMore])
 
   // Handle workspace change - clear selected conversation
   useEffect(() => {
@@ -631,6 +673,23 @@ export function ConversationsPage() {
                 </div>
               ) : (
                 <>
+                  {messagesHasMore && (
+                    <button
+                      className="load-more-messages"
+                      type="button"
+                      onClick={loadMoreMessages}
+                      disabled={loadingMoreMessages}
+                    >
+                      {loadingMoreMessages ? (
+                        <LoaderCircle size={14} className="spin" />
+                      ) : (
+                        <>
+                          <ArrowUpRight size={14} />
+                          Load earlier messages
+                        </>
+                      )}
+                    </button>
+                  )}
                   {messages.map((message) => (
                     <article
                       key={message._id}

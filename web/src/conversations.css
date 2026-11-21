@@ -516,6 +516,37 @@
   gap: 14px;
 }
 
+.load-more-messages {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  color: #5968e8;
+  font-size: 9.5px;
+  font-weight: 600;
+  background: transparent;
+  border: 1px solid #dfe3fa;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+  margin: 8px 0;
+}
+
+.load-more-messages:hover:not(:disabled) {
+  background: #f0f1ff;
+  border-color: #bcc3f4;
+}
+
+.load-more-messages:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+
+.load-more-messages .spin {
+  animation: conversations-spin 1s linear infinite;
+}
+
 .messages-error {
   display: flex;
   flex-direction: column;
