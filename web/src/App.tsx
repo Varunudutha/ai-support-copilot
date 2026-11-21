@@ -30,6 +30,7 @@ import {
   ShieldCheck,
   Sparkles,
   Ticket,
+  User,
   Users,
   X,
   Zap,
@@ -43,7 +44,9 @@ import { KnowledgeBasePage } from './components/knowledge/KnowledgeBasePage'
 import { ConversationsPage } from './components/dashboard/ConversationsPage'
 import { AgentInboxPage } from './components/dashboard/AgentInboxPage'
 import { WidgetConfigPage } from './components/dashboard/WidgetConfigPage'
+import { CustomerPage } from './components/dashboard/CustomerPage'
 import './conversations.css'
+import './customers.css'
 
 type NavItem = { label: string; icon: typeof LayoutDashboard; badge?: string }
 
@@ -51,6 +54,7 @@ const pagePaths: Record<string, string> = {
   Overview: '/',
   Conversations: '/conversations',
   'Agent inbox': '/agent-inbox',
+  Customers: '/customers',
   'Knowledge base': '/knowledge-base',
   'AI assistant': '/assistant',
   'Support tickets': '/tickets',
@@ -66,6 +70,7 @@ const pathPages = Object.fromEntries(Object.entries(pagePaths).map(([page, path]
 const primaryNav: NavItem[] = [
   { label: 'Overview', icon: LayoutDashboard },
   { label: 'Conversations', icon: MessageSquareText, badge: '12' },
+  { label: 'Customers', icon: User, badge: '5' },
   { label: 'Agent inbox', icon: ShieldCheck, badge: '3' },
   { label: 'Knowledge base', icon: BookOpen },
   { label: 'AI assistant', icon: Bot },
@@ -81,6 +86,7 @@ const workspaceNav: NavItem[] = [
 
 const pageDescriptions: Record<string, string> = {
   Conversations: 'Review customer conversations, follow up on escalations, and keep every customer moving forward.',
+  Customers: 'Manage your customer contacts, view conversation history, and track customer engagement.',
   'Agent inbox': 'Manage assigned conversations, reply to customers, and coordinate with your team.',
   Widget: 'Configure the embeddable chat widget for your website, customize appearance, and manage allowed origins.',
   'Knowledge base': 'Bring your business knowledge together so your AI assistant can answer with confidence and citations.',
@@ -394,6 +400,8 @@ function AppContent() {
             <Dashboard range={range} setRange={setRange} search={search} onViewAll={() => navigate('Conversations')} onViewAnalytics={() => navigate('Analytics')} firstName={firstName} />
           ) : activePage === 'Conversations' ? (
             <ConversationsPage />
+          ) : activePage === 'Customers' ? (
+            <CustomerPage />
           ) : activePage === 'Agent inbox' ? (
             <AgentInboxPage />
           ) : activePage === 'Widget' ? (

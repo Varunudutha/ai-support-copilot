@@ -4,27 +4,26 @@ import { Conversation, conversationChannels, conversationStatuses } from '../src
 import { Message, messageSenderTypes } from '../src/models/Message.js'
 
 describe('Conversation model', () => {
-  it('applies safe defaults and normalizes customer email', () => {
+  it('applies safe defaults and normalizes customer email via customerId', () => {
     const conversation = new Conversation({
       workspaceId: new Types.ObjectId(),
       channel: 'dashboard',
-      customer: { displayName: 'Website visitor', email: ' CUSTOMER@EXAMPLE.COM ' },
+      customerId: new Types.ObjectId(),
     })
 
     expect(conversation.status).toBe('open')
     expect(conversation.messageCount).toBe(0)
     expect(conversation.assignedTo).toBeNull()
-    expect(conversation.customer.email).toBe('customer@example.com')
     expect(conversation.validateSync()).toBeUndefined()
   })
 
-  it('requires workspace, channel, and customer identity', () => {
+  it('requires workspace, channel, and customerId', () => {
     const conversation = new Conversation({})
 
     const error = conversation.validateSync()
     expect(error?.errors.workspaceId).toBeDefined()
     expect(error?.errors.channel).toBeDefined()
-    expect(error?.errors.customer).toBeDefined()
+    expect(error?.errors.customerId).toBeDefined()
   })
 
   it('restricts channel and status to supported values', () => {
@@ -35,7 +34,7 @@ describe('Conversation model', () => {
       workspaceId: new Types.ObjectId(),
       channel: 'email',
       status: 'archived',
-      customer: { displayName: 'Visitor' },
+      customerId: new Types.ObjectId(),
     })
 
     const error = conversation.validateSync()
@@ -46,7 +45,7 @@ describe('Conversation model', () => {
   it('defines workspace-first compound indexes for inbox queries', () => {
     const indexKeys = Conversation.schema.indexes().map(([keys]) => keys)
     expect(indexKeys).toContainEqual({ workspaceId: 1, status: 1, lastMessageAt: -1 })
-    expect(indexKeys).toContainEqual({ workspaceId: 1, 'customer.email': 1, updatedAt: -1 })
+    expect(indexKeys).toContainEqual({ workspaceId: 1, customerId: 1, updatedAt: -1 })
   })
 })
 
