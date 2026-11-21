@@ -5,6 +5,7 @@ import { Conversation, conversationStatuses } from '../models/Conversation.js'
 import { Message } from '../models/Message.js'
 import { asyncHandler } from '../utils/asyncHandler.js'
 import { AppError } from '../utils/appError.js'
+import { generateRagAnswer } from '../services/ragService.js'
 
 const listQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
@@ -178,9 +179,52 @@ export const sendConversationMessage = asyncHandler(async (request: Request, res
     throw new AppError('This conversation is no longer available', 409, 'CONVERSATION_UNAVAILABLE')
   }
 
+  // Generate AI response if conversation is open and not assigned to a human agent
+  let aiMessage: import('../models/Message.js').MessageDocument | null = null
+
+  if (conversation.status === 'open' && !conversation.assignedTo) {
+    try {
+      const ragResult = await generateRagAnswer(workspace.id.toString(), input.content, 5)
+
+      // Convert RAG citations to the format expected by Message model
+      const citationsForStorage = ragResult.grounded
+        ? ragResult.citations.map((c) => ({
+            citationId: c.citationId,
+            id: c.id,
+            documentId: c.documentId,
+            chunkIndex: c.chunkIndex,
+            sourceName: c.sourceName,
+            mimeType: c.mimeType,
+            pageCount: c.pageCount,
+            score: c.score,
+            excerpt: c.excerpt,
+          }))
+        : []
+
+      aiMessage = await Message.create({
+        workspaceId: workspace.id,
+        conversationId,
+        senderType: 'assistant',
+        senderId: null,
+        content: ragResult.answer,
+        citations: citationsForStorage,
+      })
+
+      await Conversation.findOneAndUpdate(
+        { _id: conversationId, workspaceId: workspace.id, status: { $ne: 'closed' } },
+        { $set: { lastMessageAt: aiMessage.createdAt }, $inc: { messageCount: 1 } },
+        { new: true },
+      ).catch(() => undefined)
+    } catch (error) {
+      // Log but don't fail the customer message if AI generation fails
+      console.error('AI response generation failed:', error)
+    }
+  }
+
   response.status(201).json({
     message: 'Message sent successfully',
     conversation,
     savedMessage,
+    aiMessage: aiMessage ?? undefined,
   })
 })
