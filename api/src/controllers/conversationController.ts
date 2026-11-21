@@ -31,6 +31,11 @@ const historyQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50),
 })
 
+const loadMoreQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  before: z.string().optional(),
+})
+
 function requireWorkspace(request: Request) {
   if (!request.workspace) {
     throw new AppError('Workspace context is required', 400, 'WORKSPACE_REQUIRED')
@@ -137,6 +142,39 @@ export const getConversation = asyncHandler(async (request: Request, response: R
 
   response.json({
     conversation,
+    messages: messages.reverse(),
+    pagination: { limit, total: totalMessages, hasMore: totalMessages > messages.length },
+  })
+})
+
+export const loadConversationMessages = asyncHandler(async (request: Request, response: Response) => {
+  const workspace = requireWorkspace(request)
+  const conversationId = requireConversationId(request)
+  const { limit, before } = loadMoreQuerySchema.parse(request.query)
+
+  const conversation = await Conversation.findOne({
+    _id: conversationId,
+    workspaceId: workspace.id,
+  }).select('_id')
+
+  if (!conversation) {
+    throw new AppError('Conversation not found', 404, 'CONVERSATION_NOT_FOUND')
+  }
+
+  const messageFilter: { conversationId: string; workspaceId: mongoose.Types.ObjectId; _id?: { $lt: mongoose.Types.ObjectId } } = { conversationId, workspaceId: new mongoose.Types.ObjectId(workspace.id) }
+  if (before) {
+    if (!mongoose.isValidObjectId(before)) {
+      throw new AppError('Invalid message identifier', 400, 'INVALID_MESSAGE_ID')
+    }
+    messageFilter._id = { $lt: new mongoose.Types.ObjectId(before) }
+  }
+
+  const [messages, totalMessages] = await Promise.all([
+    Message.find(messageFilter).sort({ createdAt: -1 }).limit(limit).lean(),
+    Message.countDocuments({ conversationId, workspaceId: workspace.id }),
+  ])
+
+  response.json({
     messages: messages.reverse(),
     pagination: { limit, total: totalMessages, hasMore: totalMessages > messages.length },
   })
