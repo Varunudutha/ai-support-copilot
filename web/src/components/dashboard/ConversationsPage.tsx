@@ -107,6 +107,12 @@ interface SendMessageResponse {
   aiMessage?: Message
 }
 
+interface UpdateConversationResponse {
+  message: string
+  conversation: Conversation
+  systemMessages?: Message[]
+}
+
 const STATUS_LABELS: Record<ConversationStatus, string> = {
   open: 'Open',
   pending: 'Pending',
@@ -202,6 +208,7 @@ export function ConversationsPage() {
   const [messagesHasMore, setMessagesHasMore] = useState(false)
   const [loadingMoreMessages, setLoadingMoreMessages] = useState(false)
   const [earliestMessageId, setEarliestMessageId] = useState<string | null>(null)
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // New conversation modal state
@@ -430,6 +437,35 @@ export function ConversationsPage() {
     }
   }
 
+  // Update conversation status/assignment
+  const updateConversation = async (updates: { status?: ConversationStatus; assignedTo?: string | null }) => {
+    if (!selectedConversation || !workspaceId) return
+
+    try {
+      const response = await apiRequest<UpdateConversationResponse>(
+        `/workspaces/${workspaceId}/conversations/${selectedConversation._id}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify(updates),
+        },
+      )
+
+      // Update selected conversation
+      setSelectedConversation(response.conversation)
+
+      // Add system messages if any
+      if (response.systemMessages) {
+        setMessages((prev) => [...prev, ...response.systemMessages!])
+      }
+
+      // Refresh conversation list
+      await loadConversations()
+    } catch (cause) {
+      console.error('Failed to update conversation:', cause)
+      alert(cause instanceof Error ? cause.message : 'Failed to update conversation.')
+    }
+  }
+
   // Handle status filter change
   const handleStatusFilterChange = (status: ConversationStatus | 'all') => {
     setStatusFilter(status)
@@ -638,15 +674,53 @@ export function ConversationsPage() {
               </div>
               <div className="conversation-header-actions">
                 {selectedConversation.status !== 'closed' && canCreateConversation && (
-                  <button
-                    className="button button-secondary"
-                    type="button"
-                    onClick={() => {}}
-                    disabled
-                    title="Status management coming soon"
-                  >
-                    <ChevronDown size={14} /> Status
-                  </button>
+                  <>
+                    {/* Status dropdown */}
+                    <div className="dropdown">
+                      <button
+                        className="button button-secondary dropdown-toggle"
+                        type="button"
+                        onClick={() => setShowStatusDropdown(!showStatusDropdown)}
+                        aria-haspopup="true"
+                        aria-expanded={showStatusDropdown}
+                      >
+                        <ChevronDown size={14} /> Status
+                      </button>
+                      {showStatusDropdown && (
+                        <div className="dropdown-menu" role="menu">
+                          {(['open', 'pending', 'closed'] as ConversationStatus[]).map((status) => (
+                            <button
+                              key={status}
+                              className={`dropdown-item ${selectedConversation.status === status ? 'dropdown-item-active' : ''}`}
+                              type="button"
+                              role="menuitem"
+                              onClick={() => {
+                                updateConversation({ status })
+                                setShowStatusDropdown(false)
+                              }}
+                              disabled={selectedConversation.status === status}
+                            >
+                              {STATUS_LABELS[status]}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Assign agent (placeholder for now) */}
+                    {selectedConversation.status === 'pending' && (
+                      <button
+                        className="button button-secondary"
+                        type="button"
+                        onClick={() => {
+                          updateConversation({ assignedTo: null })
+                        }}
+                        disabled={!selectedConversation.assignedTo}
+                      >
+                        {selectedConversation.assignedTo ? 'Unassign Agent' : 'Assign to Me'}
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             </div>

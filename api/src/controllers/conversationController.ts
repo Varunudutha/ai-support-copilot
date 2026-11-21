@@ -36,6 +36,11 @@ const loadMoreQuerySchema = z.object({
   before: z.string().optional(),
 })
 
+const updateConversationSchema = z.object({
+  status: z.enum(conversationStatuses).optional(),
+  assignedTo: z.string().optional().nullable(),
+})
+
 function requireWorkspace(request: Request) {
   if (!request.workspace) {
     throw new AppError('Workspace context is required', 400, 'WORKSPACE_REQUIRED')
@@ -177,6 +182,135 @@ export const loadConversationMessages = asyncHandler(async (request: Request, re
   response.json({
     messages: messages.reverse(),
     pagination: { limit, total: totalMessages, hasMore: totalMessages > messages.length },
+  })
+})
+
+export const updateConversation = asyncHandler(async (request: Request, response: Response) => {
+  const workspace = requireWorkspace(request)
+  const conversationId = requireConversationId(request)
+  const input = updateConversationSchema.parse(request.body)
+
+  if (!request.authUser) {
+    throw new AppError('Authentication required', 401, 'AUTHENTICATION_REQUIRED')
+  }
+
+  const conversation = await Conversation.findOne({
+    _id: conversationId,
+    workspaceId: workspace.id,
+  })
+
+  if (!conversation) {
+    throw new AppError('Conversation not found', 404, 'CONVERSATION_NOT_FOUND')
+  }
+
+  const updates: Record<string, unknown> = {}
+  const systemMessages: Array<{
+    workspaceId: string
+    conversationId: string
+    senderType: 'system'
+    senderId: null
+    content: string
+    citations: []
+  }> = []
+
+  // Handle status change
+  if (input.status && input.status !== conversation.status) {
+    const oldStatus = conversation.status
+    updates.status = input.status
+
+    if (input.status === 'closed') {
+      updates.closedAt = new Date()
+      systemMessages.push({
+        workspaceId: workspace.id.toString(),
+        conversationId: conversation._id.toString(),
+        senderType: 'system',
+        senderId: null,
+        content: `Conversation closed by ${request.authUser.fullName}.`,
+        citations: [],
+      })
+    } else if (input.status === 'pending' && oldStatus === 'open') {
+      systemMessages.push({
+        workspaceId: workspace.id.toString(),
+        conversationId: conversation._id.toString(),
+        senderType: 'system',
+        senderId: null,
+        content: `Conversation escalated to human agent by ${request.authUser.fullName}.`,
+        citations: [],
+      })
+    } else if (input.status === 'open' && oldStatus === 'pending') {
+      systemMessages.push({
+        workspaceId: workspace.id.toString(),
+        conversationId: conversation._id.toString(),
+        senderType: 'system',
+        senderId: null,
+        content: `Conversation returned to AI handling by ${request.authUser.fullName}.`,
+        citations: [],
+      })
+    }
+  }
+
+  // Handle agent assignment
+  if (input.assignedTo !== undefined) {
+    if (input.assignedTo === null || input.assignedTo === '') {
+      if (conversation.assignedTo) {
+        systemMessages.push({
+          workspaceId: workspace.id.toString(),
+          conversationId: conversation._id.toString(),
+          senderType: 'system',
+          senderId: null,
+          content: `Agent assignment removed by ${request.authUser.fullName}.`,
+          citations: [],
+        })
+      }
+      updates.assignedTo = null
+    } else {
+      if (!mongoose.isValidObjectId(input.assignedTo)) {
+        throw new AppError('Invalid agent identifier', 400, 'INVALID_AGENT_ID')
+      }
+      const agentId = new mongoose.Types.ObjectId(input.assignedTo)
+      if (!conversation.assignedTo || !conversation.assignedTo.equals(agentId)) {
+        updates.assignedTo = agentId
+        // If assigning an agent, set status to pending (human handling)
+        if (conversation.status === 'open') {
+          updates.status = 'pending'
+        }
+        systemMessages.push({
+          workspaceId: workspace.id.toString(),
+          conversationId: conversation._id.toString(),
+          senderType: 'system',
+          senderId: null,
+          content: `Conversation assigned to agent by ${request.authUser.fullName}.`,
+          citations: [],
+        })
+      }
+    }
+  }
+
+  // Apply updates
+  const updatedConversation = await Conversation.findOneAndUpdate(
+    { _id: conversationId, workspaceId: workspace.id },
+    { $set: updates },
+    { new: true },
+  )
+
+  if (!updatedConversation) {
+    throw new AppError('Conversation not found', 404, 'CONVERSATION_NOT_FOUND')
+  }
+
+  // Create system messages
+  if (systemMessages.length > 0) {
+    await Message.insertMany(systemMessages)
+
+    await Conversation.findOneAndUpdate(
+      { _id: conversationId, workspaceId: workspace.id },
+      { $inc: { messageCount: systemMessages.length }, $set: { lastMessageAt: new Date() } },
+    ).catch(() => undefined)
+  }
+
+  response.json({
+    message: 'Conversation updated successfully',
+    conversation: updatedConversation,
+    systemMessages: systemMessages.length > 0 ? systemMessages : undefined,
   })
 })
 
