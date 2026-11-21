@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { WidgetConfig } from '../models/WidgetConfig.js'
 import { Conversation } from '../models/Conversation.js'
 import { Message } from '../models/Message.js'
+import { Customer } from '../models/Customer.js'
 import { asyncHandler } from '../utils/asyncHandler.js'
 import { AppError } from '../utils/appError.js'
 import { generateRagAnswer } from '../services/ragService.js'
@@ -116,10 +117,37 @@ export const createPublicConversation = asyncHandler(async (request: Request, re
     throw new AppError('Too many conversations started. Please wait before starting a new one.', 429, 'RATE_LIMITED')
   }
 
+  // Find or create customer
+  let customer = await Customer.findOne({
+    workspaceId,
+    $or: [
+      { email: input.customer.email },
+      { externalId: input.customer.externalId },
+    ].filter(Boolean),
+  })
+
+  if (!customer) {
+    customer = await Customer.create({
+      workspaceId,
+      displayName: input.customer.displayName,
+      email: input.customer.email,
+      externalId: input.customer.externalId,
+      source: 'widget',
+      firstConversationAt: new Date(),
+      conversationCount: 0,
+      totalMessages: 0,
+    })
+  }
+
+  // Update customer stats
+  customer.conversationCount += 1
+  customer.lastConversationAt = new Date()
+  await customer.save()
+
   const conversation = await Conversation.create({
     workspaceId,
     channel: 'widget',
-    customer: input.customer,
+    customerId: customer._id,
     subject: null,
   })
 
@@ -178,6 +206,7 @@ export const createPublicConversation = asyncHandler(async (request: Request, re
   response.status(201).json({
     message: 'Conversation created successfully',
     conversation,
+    customer,
     messages: [savedMessage, aiMessage].filter(Boolean),
   })
 })
@@ -218,7 +247,7 @@ export const sendPublicMessage = asyncHandler(async (request: Request, response:
   const existing = await Conversation.findOne({
     _id: conversationId,
     workspaceId,
-  }).select('_id status')
+  }).select('_id status assignedTo')
 
   if (!existing) {
     throw new AppError('Conversation not found', 404, 'CONVERSATION_NOT_FOUND')
@@ -285,6 +314,12 @@ export const sendPublicMessage = asyncHandler(async (request: Request, response:
       console.error('Widget AI response generation failed:', error)
     }
   }
+
+  // Update customer stats
+  await Customer.findByIdAndUpdate(conversation.customerId, {
+    $inc: { totalMessages: 1 },
+    $set: { lastConversationAt: new Date() },
+  })
 
   response.status(201).json({
     message: 'Message sent successfully',
