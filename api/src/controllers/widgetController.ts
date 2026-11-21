@@ -5,6 +5,7 @@ import { WidgetConfig } from '../models/WidgetConfig.js'
 import { Conversation } from '../models/Conversation.js'
 import { Message } from '../models/Message.js'
 import { Customer } from '../models/Customer.js'
+import { AIConfig } from '../models/AIConfig.js'
 import { asyncHandler } from '../utils/asyncHandler.js'
 import { AppError } from '../utils/appError.js'
 import { generateRagAnswer } from '../services/ragService.js'
@@ -280,7 +281,37 @@ export const sendPublicMessage = asyncHandler(async (request: Request, response:
   let aiMessage = null
   if (conversation.status === 'open' && !conversation.assignedTo) {
     try {
-      const ragResult = await generateRagAnswer(workspaceId, input.content, 5)
+      // Fetch AI config for this workspace
+      const aiConfig = await AIConfig.findOne({ workspaceId }).lean()
+
+      // Fetch recent conversation history for context
+      const historyMessages = await Message.find({
+        conversationId,
+        workspaceId,
+      })
+        .sort({ createdAt: -1 })
+        .limit(aiConfig?.maxConversationHistory || 5)
+        .lean()
+
+      const conversationHistory = historyMessages
+        .reverse()
+        .map((msg) => ({
+          senderType: msg.senderType,
+          content: msg.content,
+          createdAt: msg.createdAt.toISOString(),
+        }))
+
+      const ragResult = await generateRagAnswer(workspaceId, input.content, 5, {
+        conversationHistory,
+        aiConfig: {
+          customInstructions: aiConfig?.customInstructions,
+          tone: aiConfig?.tone,
+          responseLength: aiConfig?.responseLength,
+          includeSources: aiConfig?.includeSources,
+          maxSources: aiConfig?.maxSources,
+          fallbackMessage: aiConfig?.fallbackMessage,
+        },
+      })
 
       const citationsForStorage = ragResult.grounded
         ? ragResult.citations.map((c) => ({
