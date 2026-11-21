@@ -42,6 +42,7 @@ import { conversations, type ChartRange } from './data/dashboard'
 import { KnowledgeBasePage } from './components/knowledge/KnowledgeBasePage'
 import { ConversationsPage } from './components/dashboard/ConversationsPage'
 import { AgentInboxPage } from './components/dashboard/AgentInboxPage'
+import { WidgetConfigPage } from './components/dashboard/WidgetConfigPage'
 import './conversations.css'
 
 type NavItem = { label: string; icon: typeof LayoutDashboard; badge?: string }
@@ -56,6 +57,7 @@ const pagePaths: Record<string, string> = {
   'Team members': '/team',
   Analytics: '/analytics',
   Settings: '/settings',
+  Widget: '/widget',
   'Help center': '/help',
 }
 
@@ -73,14 +75,16 @@ const primaryNav: NavItem[] = [
 const workspaceNav: NavItem[] = [
   { label: 'Team members', icon: Users },
   { label: 'Analytics', icon: Activity },
+  { label: 'Widget', icon: LayoutDashboard },
   { label: 'Settings', icon: Settings2 },
 ]
 
 const pageDescriptions: Record<string, string> = {
   Conversations: 'Review customer conversations, follow up on escalations, and keep every customer moving forward.',
   'Agent inbox': 'Manage assigned conversations, reply to customers, and coordinate with your team.',
+  Widget: 'Configure the embeddable chat widget for your website, customize appearance, and manage allowed origins.',
   'Knowledge base': 'Bring your business knowledge together so your AI assistant can answer with confidence and citations.',
-  'AI assistant': 'Shape your copilot’s personality, response rules, and approved support actions.',
+  'AI assistant': 'Shape your copilot\'s personality, response rules, and approved support actions.',
   'Support tickets': 'Keep track of requests that need a human touch, from first response to resolution.',
   'Team members': 'Invite teammates and decide who can manage your workspace and customer support.',
   Analytics: 'Understand support volume, customer satisfaction, and how your AI assistant is performing.',
@@ -298,7 +302,7 @@ function Dashboard({ range, setRange, search, onViewAll, onViewAnalytics, firstN
   return (
     <>
       <div className="page-heading-row">
-        <div><div className="eyebrow page-eyebrow">{new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).format(new Date()).toUpperCase()}</div><h1>Good morning, {firstName} <span>✦</span></h1><p>Here’s what’s happening with your support workspace today.</p></div>
+        <div><div className="eyebrow page-eyebrow">{new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).format(new Date()).toUpperCase()}</div><h1>Good morning, {firstName} <span>✦</span></h1><p>Here's what's happening with your support workspace today.</p></div>
         <div className="page-actions"><button className="button button-secondary" onClick={() => window.print()}><ArrowDownUp size={15} /> Export report</button><button className="button button-primary" onClick={onViewAll}><Plus size={16} /> View conversations</button></div>
       </div>
 
@@ -392,6 +396,8 @@ function AppContent() {
             <ConversationsPage />
           ) : activePage === 'Agent inbox' ? (
             <AgentInboxPage />
+          ) : activePage === 'Widget' ? (
+            <WidgetConfigPage />
           ) : activePage === 'Knowledge base' ? (
             <KnowledgeBasePage />
           ) : (

@@ -8,6 +8,8 @@ import authRoutes from './routes/authRoutes.js'
 import workspaceRoutes from './routes/workspaceRoutes.js'
 import knowledgeDocumentRoutes from './routes/knowledgeDocumentRoutes.js'
 import conversationRoutes from './routes/conversationRoutes.js'
+import widgetRoutes from './routes/widgetRoutes.js'
+import widgetConfigRoutes from './routes/widgetConfigRoutes.js'
 import { errorHandler, notFound } from './middleware/errorHandler.js'
 import { AppError } from './utils/appError.js'
 
@@ -39,6 +41,8 @@ const authLimiter = rateLimit({
 app.use('/api/auth', authLimiter, authRoutes)
 app.use('/api/workspaces/:workspaceId/knowledge-documents', knowledgeDocumentRoutes)
 app.use('/api/workspaces/:workspaceId/conversations', conversationRoutes)
+app.use('/api/workspaces/:workspaceId/widget', widgetRoutes)
+app.use('/api/workspaces/:workspaceId/widget-config', widgetConfigRoutes)
 app.use('/api/workspaces', workspaceRoutes)
 app.use(notFound)
 app.use(errorHandler)
