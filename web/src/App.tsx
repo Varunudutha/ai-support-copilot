@@ -41,6 +41,7 @@ import { AgentHealthPanel, ResolutionPanel } from './components/dashboard/Resolu
 import { conversations, type ChartRange } from './data/dashboard'
 import { KnowledgeBasePage } from './components/knowledge/KnowledgeBasePage'
 import { ConversationsPage } from './components/dashboard/ConversationsPage'
+import { AgentInboxPage } from './components/dashboard/AgentInboxPage'
 import './conversations.css'
 
 type NavItem = { label: string; icon: typeof LayoutDashboard; badge?: string }
@@ -48,6 +49,7 @@ type NavItem = { label: string; icon: typeof LayoutDashboard; badge?: string }
 const pagePaths: Record<string, string> = {
   Overview: '/',
   Conversations: '/conversations',
+  'Agent inbox': '/agent-inbox',
   'Knowledge base': '/knowledge-base',
   'AI assistant': '/assistant',
   'Support tickets': '/tickets',
@@ -62,6 +64,7 @@ const pathPages = Object.fromEntries(Object.entries(pagePaths).map(([page, path]
 const primaryNav: NavItem[] = [
   { label: 'Overview', icon: LayoutDashboard },
   { label: 'Conversations', icon: MessageSquareText, badge: '12' },
+  { label: 'Agent inbox', icon: ShieldCheck, badge: '3' },
   { label: 'Knowledge base', icon: BookOpen },
   { label: 'AI assistant', icon: Bot },
   { label: 'Support tickets', icon: Ticket, badge: '4' },
@@ -75,6 +78,7 @@ const workspaceNav: NavItem[] = [
 
 const pageDescriptions: Record<string, string> = {
   Conversations: 'Review customer conversations, follow up on escalations, and keep every customer moving forward.',
+  'Agent inbox': 'Manage assigned conversations, reply to customers, and coordinate with your team.',
   'Knowledge base': 'Bring your business knowledge together so your AI assistant can answer with confidence and citations.',
   'AI assistant': 'Shape your copilot’s personality, response rules, and approved support actions.',
   'Support tickets': 'Keep track of requests that need a human touch, from first response to resolution.',
@@ -386,6 +390,8 @@ function AppContent() {
             <Dashboard range={range} setRange={setRange} search={search} onViewAll={() => navigate('Conversations')} onViewAnalytics={() => navigate('Analytics')} firstName={firstName} />
           ) : activePage === 'Conversations' ? (
             <ConversationsPage />
+          ) : activePage === 'Agent inbox' ? (
+            <AgentInboxPage />
           ) : activePage === 'Knowledge base' ? (
             <KnowledgeBasePage />
           ) : (
