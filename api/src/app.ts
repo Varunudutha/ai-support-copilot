@@ -13,6 +13,7 @@ import widgetConfigRoutes from './routes/widgetConfigRoutes.js'
 import customerRoutes from './routes/customerRoutes.js'
 import aiConfigRoutes from './routes/aiConfigRoutes.js'
 import analyticsRoutes from './routes/analyticsRoutes.js'
+import settingsRoutes from './routes/settingsRoutes.js'
 import { errorHandler, notFound } from './middleware/errorHandler.js'
 import { AppError } from './utils/appError.js'
 
@@ -49,6 +50,7 @@ app.use('/api/workspaces/:workspaceId/widget-config', widgetConfigRoutes)
 app.use('/api/workspaces/:workspaceId/customers', customerRoutes)
 app.use('/api/workspaces/:workspaceId/ai-config', aiConfigRoutes)
 app.use('/api/workspaces/:workspaceId/analytics', analyticsRoutes)
+app.use('/api/workspaces/:workspaceId/settings', settingsRoutes)
 app.use('/api/workspaces', workspaceRoutes)
 app.use(notFound)
 app.use(errorHandler)
